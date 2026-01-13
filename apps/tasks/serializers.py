@@ -15,7 +15,5 @@ class TaskCompleteSerializer(serializers.ModelSerializer):
     def validate(self, data):
         if data.get('status') == 'completed':
             if not data.get('completion_report') or not data.get('worked_hours'):
-                raise serializers.ValidationError(
-                    "Completion report and worked hours are required."
-                )
+                raise serializers.ValidationError("Completion report and worked hours are required.")
         return data
