@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
 from .models import Task
 from .serializers import TaskSerializer, TaskCompleteSerializer
-from users.restriction import IsUser, IsAdminOrSuperAdmin
+from apps.users.restriction import IsUser, IsAdminOrSuperAdmin
 
 # Create your views here.
 

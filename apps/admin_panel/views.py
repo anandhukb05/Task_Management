@@ -1,26 +1,116 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from users.models import User
-from tasks.models import Task
+from django.core.exceptions import PermissionDenied
 
-# Create your views here.
+from apps.users.models import User
+from apps.tasks.models import Task
+from django.contrib.auth import authenticate, login, logout
 
+
+# =========================
+# ROLE CHECK HELPERS
+# =========================
+
+def admin_required(view_func):
+    def wrapper(request, *args, **kwargs):
+        if request.user.role not in ['admin', 'superadmin']:
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def superadmin_required(view_func):
+    def wrapper(request, *args, **kwargs):
+        if request.user.role != 'superadmin':
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+def admin_login(request):
+    if request.method == 'POST':
+        username = request.POST['username']
+        password = request.POST['password']
+
+        user = authenticate(request, username=username, password=password)
+        if user and user.role in ['admin', 'superadmin']:
+            login(request, user)
+            return redirect('/admin/dashboard/')
+        return render(request, 'admin/login.html', {'error': 'Invalid credentials'})
+
+    return render(request, 'login.html')
+
+
+def admin_logout(request):
+    logout(request)
+    return redirect('/admin/login/')
+
+
+
+# =========================
+# DASHBOARD
+# =========================
 
 @login_required
+@admin_required
 def dashboard(request):
-    return render(request, 'admin/dashboard.html')
+    if request.user.role == 'superadmin':
+        users_count = User.objects.count()
+        tasks = Task.objects.all()
+    else:
+        users_count = User.objects.filter(assigned_admin=request.user).count()
+        tasks = Task.objects.filter(assigned_to__assigned_admin=request.user)
+
+    context = {
+        'users_count': users_count,
+        'tasks_count': tasks.count(),
+        'completed_tasks': tasks.filter(status='completed').count()
+    }
+
+    return render(request, 'dashboard.html', context)
+
+
+# =========================
+# MANAGE USERS (SUPERADMIN)
+# =========================
 
 @login_required
+@superadmin_required
 def manage_users(request):
     users = User.objects.all()
-    return render(request, 'admin/users.html', {'users': users})
+    return render(request, 'users.html', {'users': users})
+
+
+# =========================
+# MANAGE TASKS
+# =========================
 
 @login_required
+@admin_required
 def manage_tasks(request):
-    tasks = Task.objects.all()
-    return render(request, 'admin/tasks.html', {'tasks': tasks})
+    if request.user.role == 'superadmin':
+        tasks = Task.objects.select_related('assigned_to').all()
+    else:
+        tasks = Task.objects.select_related('assigned_to').filter(
+            assigned_to__assigned_admin=request.user
+        )
+
+    return render(request, 'tasks.html', {'tasks': tasks})
+
+
+# =========================
+# TASK REPORTS
+# =========================
 
 @login_required
+@admin_required
 def task_reports(request):
-    tasks = Task.objects.filter(status='completed')
-    return render(request, 'admin/reports.html', {'tasks': tasks})
+    if request.user.role == 'superadmin':
+        tasks = Task.objects.filter(status='completed')
+    else:
+        tasks = Task.objects.filter(
+            status='completed',
+            assigned_to__assigned_admin=request.user
+        )
+
+    return render(request, 'reports.html', {'tasks': tasks})
