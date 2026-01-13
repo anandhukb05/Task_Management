@@ -7,10 +7,6 @@ from apps.tasks.models import Task
 from django.contrib.auth import authenticate, login, logout
 
 
-# =========================
-# ROLE CHECK HELPERS
-# =========================
-
 def admin_required(view_func):
     def wrapper(request, *args, **kwargs):
         if request.user.role not in ['admin', 'superadmin']:
@@ -47,10 +43,6 @@ def admin_logout(request):
 
 
 
-# =========================
-# DASHBOARD
-# =========================
-
 @login_required
 @admin_required
 def dashboard(request):
@@ -70,9 +62,6 @@ def dashboard(request):
     return render(request, 'dashboard.html', context)
 
 
-# =========================
-# MANAGE USERS (SUPERADMIN)
-# =========================
 
 @login_required
 @superadmin_required
@@ -81,9 +70,6 @@ def manage_users(request):
     return render(request, 'users.html', {'users': users})
 
 
-# =========================
-# MANAGE TASKS
-# =========================
 
 @login_required
 @admin_required
@@ -98,9 +84,6 @@ def manage_tasks(request):
     return render(request, 'tasks.html', {'tasks': tasks})
 
 
-# =========================
-# TASK REPORTS
-# =========================
 
 @login_required
 @admin_required
